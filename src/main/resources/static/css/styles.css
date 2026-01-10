@@ -1,0 +1,5 @@
+/* Password letters should be dark red */
+.pwd { color: darkred; }
+
+body { font-family: Arial, sans-serif; margin: 24px; }
+label { display: block; margin: 6px 0; }
