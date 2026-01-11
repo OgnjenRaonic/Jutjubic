@@ -7,16 +7,21 @@ import com.example.demo.model.Video;
 import com.example.demo.repository.UserRepository;
 import com.example.demo.repository.VideoRepository;
 import com.example.demo.service.VideoService;
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.io.IOException;
 import java.nio.file.*;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.*;
 
 @Service
 public class VideoServiceImpl implements VideoService {
@@ -24,89 +29,175 @@ public class VideoServiceImpl implements VideoService {
     private final VideoRepository videoRepository;
     private final UserRepository userRepository;
 
+    @Value("${app.storage.base-dir:./uploads}")
+    private String baseDir;
+
+    @Value("${app.storage.upload-timeout-seconds:15}")
+    private int uploadTimeoutSeconds;
+
     public VideoServiceImpl(VideoRepository videoRepository, UserRepository userRepository) {
         this.videoRepository = videoRepository;
         this.userRepository = userRepository;
     }
 
     @Override
-    public VideoDTO create(CreateVideoDTO data, MultipartFile thumbnail, MultipartFile videoFile, String username) {
-        if (data == null) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Nedostaju podaci.");
-        if (isBlank(data.getTitle())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Naslov je obavezan.");
-        if (isBlank(data.getDescription())) throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Opis je obavezan.");
-        if (data.getTags() == null || data.getTags().isEmpty())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Tagovi su obavezni.");
-        if (thumbnail == null || thumbnail.isEmpty())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Thumbnail je obavezan.");
-        if (videoFile == null || videoFile.isEmpty())
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Video je obavezan.");
+    public VideoDTO create(CreateVideoDTO data, MultipartFile thumbnail, MultipartFile video, String authEmail) {
 
-        // basic checks
-        if (!"video/mp4".equals(videoFile.getContentType()))
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Video mora biti mp4.");
-        long maxBytes = 200L * 1024L * 1024L;
-        if (videoFile.getSize() > maxBytes)
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Video je veći od 200MB.");
+        User author = userRepository.findByEmail(authEmail)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        User author = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        // napravi folder-e ako ne postoje
+        Path thumbDir = Path.of("./uploads/thumbnails");
+        Path videoDir = Path.of("./uploads/videos");
 
-        // Save files locally (simple, no rollback here)
-        String thumbPath = saveToUploads(thumbnail, "thumbnails");
-        String vidPath = saveToUploads(videoFile, "videos");
-
-        Video v = new Video();
-        v.setAuthor(author);
-        v.setTitle(data.getTitle().trim());
-        v.setDescription(data.getDescription().trim());
-        v.setTags(normalizeTags(data.getTags()));
-        v.setCreatedAt(Instant.now());
-        v.setGeoLocation(blankToNull(data.getGeoLocation()));
-        v.setThumbnailPath(thumbPath);
-        v.setVideoPath(vidPath);
-
-        Video saved = videoRepository.save(v);
-
-        return VideoDTO.from(
-                saved.getId(),
-                saved.getTitle(),
-                saved.getDescription(),
-                saved.getTags(),
-                saved.getCreatedAt(),
-                saved.getGeoLocation(),
-                saved.getAuthor().getId(),
-                saved.getAuthor().getUsername()
-        );
-    }
-
-    private String saveToUploads(MultipartFile file, String folder) {
         try {
-            Path dir = Paths.get("./uploads", folder);
-            Files.createDirectories(dir);
+            Files.createDirectories(thumbDir);
+            Files.createDirectories(videoDir);
 
-            String original = file.getOriginalFilename();
-            String ext = (original != null && original.contains("."))
-                    ? original.substring(original.lastIndexOf('.') + 1)
-                    : "bin";
+            // generiši unique nazive (da se ne pregazi)
+            String thumbName = UUID.randomUUID() + "-" + thumbnail.getOriginalFilename();
+            String videoName = UUID.randomUUID() + "-" + video.getOriginalFilename();
 
-            String name = UUID.randomUUID() + "." + ext;
-            Path target = dir.resolve(name);
+            Path thumbPath = thumbDir.resolve(thumbName);
+            Path videoPath = videoDir.resolve(videoName);
 
-            Files.copy(file.getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
-            return target.toString();
+            // snimi fajlove
+            thumbnail.transferTo(thumbPath);
+            video.transferTo(videoPath);
+
+            // entitet
+            Video v = new Video();
+            v.setAuthor(author);
+            v.setTitle(data.getTitle());
+            v.setDescription(data.getDescription());
+            v.setTags(data.getTags());
+            v.setGeoLocation(data.getLocation());
+            v.setCreatedAt(Instant.now());
+
+            v.setThumbnailPath(thumbPath.toString());
+            v.setVideoPath(videoPath.toString());
+
+            Video saved = videoRepository.save(v);
+
+            System.out.println("SAVED video id=" + saved.getId()
+                    + " thumb=" + saved.getThumbnailPath()
+                    + " video=" + saved.getVideoPath());
+
+            return toDto(saved);
+
         } catch (IOException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Neuspešan upload fajla.");
+            throw new RuntimeException("Failed to store files", e);
         }
     }
 
-    private List<String> normalizeTags(List<String> tags) {
-        return tags.stream()
-                .filter(t -> t != null && !t.isBlank())
-                .map(t -> t.trim().toLowerCase())
-                .distinct()
-                .toList();
+
+    @Override
+    public List<VideoDTO> listNewestFirst() {
+        return videoRepository.findAllByOrderByCreatedAtDesc()
+                .stream().map(this::toDto).toList();
     }
 
-    private boolean isBlank(String s) { return s == null || s.isBlank(); }
-    private String blankToNull(String s) { return (s == null || s.isBlank()) ? null : s.trim(); }
+    @Override
+    public VideoDTO getById(Long id) {
+        Video v = videoRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Video not found"));
+        return toDto(v);
+    }
+
+    @Override
+    public Resource getVideoResource(Long id) {
+        Video v = videoRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Video not found"));
+
+        Path p = Path.of(v.getVideoPath());
+        if (!Files.exists(p)) throw new IllegalArgumentException("Video file missing on disk");
+
+        return new FileSystemResource(p);
+    }
+
+    // ✅ thumbnail caching (backend cache umesto stalnog čitanja sa diska)
+    @Override
+    @Cacheable(cacheNames = "videoThumbnails", key = "#id")
+    public ThumbnailPayload loadThumbnail(Long id) throws IOException {
+        Video v = videoRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Video not found"));
+
+        Path p = Path.of(v.getThumbnailPath());
+        if (!Files.exists(p)) throw new IllegalArgumentException("Thumbnail missing on disk");
+
+        byte[] bytes = Files.readAllBytes(p);
+        String contentType = Files.probeContentType(p);
+        if (contentType == null) contentType = MediaType.IMAGE_JPEG_VALUE;
+
+        return new ThumbnailPayload(bytes, contentType);
+    }
+
+
+    private void validateCreate(CreateVideoDTO data, MultipartFile thumbnail, MultipartFile video) {
+        if (data == null) throw new IllegalArgumentException("Missing data part");
+        if (isBlank(data.getTitle())) throw new IllegalArgumentException("Title is required");
+        if (isBlank(data.getDescription())) throw new IllegalArgumentException("Description is required");
+        if (data.getTags() == null) throw new IllegalArgumentException("Tags are required");
+
+        if (thumbnail == null || thumbnail.isEmpty()) throw new IllegalArgumentException("Thumbnail is required");
+        String thumbCt = thumbnail.getContentType() == null ? "" : thumbnail.getContentType();
+        if (!thumbCt.startsWith("image/")) throw new IllegalArgumentException("Thumbnail must be an image");
+
+        if (video == null || video.isEmpty()) throw new IllegalArgumentException("Video is required");
+        String videoCt = video.getContentType() == null ? "" : video.getContentType();
+        if (!"video/mp4".equalsIgnoreCase(videoCt)) {
+            // neki browseri šalju application/octet-stream, pa možeš popustiti ako hoćeš:
+            // throw new IllegalArgumentException("Video must be video/mp4");
+        }
+        long max = 200L * 1024 * 1024;
+        if (video.getSize() > max) throw new IllegalArgumentException("Video max size is 200MB");
+    }
+
+    private void saveWithTimeout(MultipartFile file, Path dest, int timeoutSeconds) throws Exception {
+        // pokušaj da snimi fajl i prekini čekanje posle timeout-a
+        ExecutorService ex = Executors.newSingleThreadExecutor();
+        Future<?> f = ex.submit(() -> {
+            try {
+                file.transferTo(dest);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        try {
+            f.get(timeoutSeconds, TimeUnit.SECONDS);
+        } catch (TimeoutException te) {
+            f.cancel(true);
+            throw te;
+        } finally {
+            ex.shutdownNow();
+        }
+    }
+
+    private void safeDelete(Path p) {
+        try { Files.deleteIfExists(p); } catch (Exception ignored) {}
+    }
+
+    private boolean isBlank(String s) { return s == null || s.trim().isEmpty(); }
+
+    private String guessImageExt(MultipartFile thumbnail) {
+        String ct = thumbnail.getContentType();
+        if (ct == null) return ".jpg";
+        return switch (ct) {
+            case "image/png" -> ".png";
+            case "image/webp" -> ".webp";
+            case "image/jpeg", "image/jpg" -> ".jpg";
+            default -> ".jpg";
+        };
+    }
+
+    private VideoDTO toDto(Video v) {
+        VideoDTO dto = new VideoDTO();
+        dto.setId(v.getId());
+        dto.setTitle(v.getTitle());
+        dto.setDescription(v.getDescription());
+        dto.setTags(v.getTags());
+        dto.setLocation(v.getGeoLocation());
+        return dto;
+    }
 }

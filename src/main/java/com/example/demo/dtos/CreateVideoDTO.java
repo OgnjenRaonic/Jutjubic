@@ -3,10 +3,13 @@ package com.example.demo.dtos;
 import java.util.List;
 
 public class CreateVideoDTO {
+
     private String title;
     private String description;
     private List<String> tags;
-    private String geoLocation; // optional
+    private String location; // opcionalno
+
+    public CreateVideoDTO() {}
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
@@ -17,6 +20,6 @@ public class CreateVideoDTO {
     public List<String> getTags() { return tags; }
     public void setTags(List<String> tags) { this.tags = tags; }
 
-    public String getGeoLocation() { return geoLocation; }
-    public void setGeoLocation(String geoLocation) { this.geoLocation = geoLocation; }
+    public String getLocation() { return location; }
+    public void setLocation(String location) { this.location = location; }
 }

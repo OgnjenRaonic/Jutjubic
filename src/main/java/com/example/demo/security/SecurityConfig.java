@@ -47,6 +47,8 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/activate", "/api/activate").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/register", "/api/login").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/videos/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/videos").authenticated()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
                 )

@@ -9,10 +9,12 @@ import java.util.List;
 @Table(name = "videos")
 public class Video {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "author_id", nullable = false)
     private User author;
 
     @Column(nullable = false, length = 200)
@@ -26,17 +28,22 @@ public class Video {
     @Column(name = "tag", nullable = false, length = 50)
     private List<String> tags = new ArrayList<>();
 
-    @Column(nullable = false)
+    @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
-    @Column(nullable = true, length = 255)
-    private String geoLocation;
+    @Column(length = 255)
+    private String geoLocation; // opciono
 
     @Column(nullable = false, length = 500)
     private String thumbnailPath;
 
     @Column(nullable = false, length = 500)
     private String videoPath;
+
+    @PrePersist
+    protected void onCreate() {
+        if (createdAt == null) createdAt = Instant.now();
+    }
 
     public Long getId() { return id; }
 
