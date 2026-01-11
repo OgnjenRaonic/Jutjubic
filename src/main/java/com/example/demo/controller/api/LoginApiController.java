@@ -3,6 +3,7 @@ package com.example.demo.controller.api;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -26,8 +27,12 @@ public class LoginApiController {
                     new UsernamePasswordAuthenticationToken(req.email(), req.password())
             );
             return new MessageResponse("Login OK");
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials or account not activated.");
+        } catch (AuthenticationException e) {
+            // Ovo će ti reći: BadCredentialsException, DisabledException, LockedException...
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    e.getClass().getSimpleName() + ": " + e.getMessage()
+            );
         }
     }
 }

@@ -20,6 +20,8 @@ public class AuthApiController {
     public record RegisterRequest(
             String email,
             String username,
+            String firstName,
+            String lastName,
             String password,
             String passwordConfirm
     ) {}
@@ -32,12 +34,10 @@ public class AuthApiController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Passwords do not match");
         }
 
-        // Napravi User objekat iz request-a
         User user = new User();
         user.setEmail(req.email());
         user.setUsername(req.username());
-        user.setPassword(req.password()); // UserService će hashovati (nadam se) ili radiš ovde
-
+        user.setPassword(req.password());
         String appUrl = request.getScheme() + "://" + request.getServerName()
                 + ((request.getServerPort() == 80 || request.getServerPort() == 443) ? "" : ":" + request.getServerPort());
 

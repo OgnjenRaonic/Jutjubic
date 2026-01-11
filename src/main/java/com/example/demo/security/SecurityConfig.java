@@ -40,39 +40,30 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-
         http
                 .csrf(csrf -> csrf.disable())
-                .cors(cors -> {}) // IMPORTANT za Angular (ako ne koristiš proxy)
-                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                .formLogin(form -> form.disable())
-                .logout(logout -> logout.disable())
-
-                .exceptionHandling(ex -> ex
-                        .authenticationEntryPoint((req, res, e) -> res.sendError(401))
-                        .accessDeniedHandler((req, res, e) -> res.sendError(403))
-                )
-
+                .cors(cors -> {})
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/error").permitAll()
+                        .requestMatchers("/activate", "/api/activate").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/register", "/api/login").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
-                        .requestMatchers(HttpMethod.POST, "/api/register").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/login").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/activate/**").permitAll()
-
-                        .requestMatchers(HttpMethod.GET, "/api/videos/**").permitAll()
-
                         .anyRequest().authenticated()
+                )
+                .formLogin(form -> form
+                        .loginProcessingUrl("/api/login")      // ✅ bitno
+                        .usernameParameter("email")
+                        .passwordParameter("password")
+                        .successHandler((req, res, auth) -> res.setStatus(200))  // bez redirect
+                        .failureHandler((req, res, ex) -> res.sendError(401))
+                        .permitAll()
+                )
+                .logout(logout -> logout
+                        .logoutUrl("/api/logout")              // ✅ bitno
+                        .logoutSuccessHandler((req, res, auth) -> res.setStatus(200)) // bez redirect
+                        .invalidateHttpSession(true)
+                        .deleteCookies("JSESSIONID")
                 );
-
-        http.authenticationProvider(authenticationProvider());
-
-        // IP block filter
-        http.addFilterBefore(
-                new IpBlockFilter(loginAttemptService),
-                org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter.class
-        );
 
         return http.build();
     }
