@@ -1,16 +1,17 @@
 package com.example.demo.service;
 
-import com.example.demo.model.ActivationToken;
-import com.example.demo.model.User;
-import com.example.demo.repository.ActivationTokenRepository;
-import com.example.demo.repository.UserRepository;
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.UUID;
+import com.example.demo.model.ActivationToken;
+import com.example.demo.model.User;
+import com.example.demo.repository.ActivationTokenRepository;
+import com.example.demo.repository.UserRepository;
 
 @Service
 public class UserService {
@@ -43,7 +44,7 @@ public class UserService {
         token.setExpiry(LocalDateTime.now().plusDays(1));
         tokenRepository.save(token);
 
-        String link = appUrl + "/activate?token=" + token.getToken();
+        String link = appUrl + "/api/activate?token=" + token.getToken();
         emailService.sendActivationEmail(saved.getEmail(), link);
         return saved;
     }
@@ -61,5 +62,10 @@ public class UserService {
         userRepository.save(u);
         tokenRepository.delete(token);
         return true;
+    }
+
+    public User findUserByEmail(String email) {
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
     }
 }
