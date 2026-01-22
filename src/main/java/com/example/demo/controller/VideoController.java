@@ -27,7 +27,6 @@ public class VideoController {
         this.videoService = videoService;
     }
 
-    // ✅ CREATE (vratio sam ti 1:1)
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public VideoDTO create(
             @ModelAttribute CreateVideoDTO data,
@@ -38,19 +37,16 @@ public class VideoController {
         return videoService.create(data, thumbnail, video, auth.getName());
     }
 
-    // ✅ LIST newest-first
     @GetMapping
     public List<VideoDTO> list() {
         return videoService.listNewestFirst();
     }
 
-    // ✅ DETAIL
     @GetMapping("/{id}")
     public VideoDTO get(@PathVariable Long id) {
         return videoService.getById(id);
     }
 
-    // ✅ THUMBNAIL (keširano)
     @GetMapping("/{id}/thumbnail")
     public ResponseEntity<byte[]> thumbnail(@PathVariable Long id) throws IOException {
         var thumb = videoService.loadThumbnail(id);
@@ -62,7 +58,6 @@ public class VideoController {
                 .body(thumb.bytes());
     }
 
-    // ✅ VIDEO STREAM (Range / premotavanje)
     @GetMapping("/{id}/stream")
     public ResponseEntity<ResourceRegion> stream(
             @PathVariable Long id,

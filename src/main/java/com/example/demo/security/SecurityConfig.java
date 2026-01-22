@@ -12,6 +12,11 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -38,31 +43,47 @@ public class SecurityConfig {
         return provider;
     }
 
+    // ✅ CORS (ako koristiš proxy, nije ni potrebno, ali ne smeta)
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration cfg = new CorsConfiguration();
+        cfg.setAllowedOrigins(List.of("http://localhost:4200", "http://127.0.0.1:4200"));
+        cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+        cfg.setAllowedHeaders(List.of("Content-Type", "Authorization", "X-Requested-With"));
+
+        // ✅ KLJUČNO jer ti Angular šalje withCredentials:true
+        cfg.setAllowCredentials(true);
+
+        // ✅ da browser sme da vidi Set-Cookie (često pomaže kod debug-a / session)
+        cfg.setExposedHeaders(List.of("Set-Cookie"));
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", cfg);
+        return source;
+    }
+
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> {})
+                .authenticationProvider(authenticationProvider())
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+
                 .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/activate", "/api/activate").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/register", "/api/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/videos/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/videos").authenticated()
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
                 )
-                .formLogin(form -> form
-                        .loginProcessingUrl("/api/login")      // ✅ bitno
-                        .usernameParameter("email")
-                        .passwordParameter("password")
-                        .successHandler((req, res, auth) -> res.setStatus(200))  // bez redirect
-                        .failureHandler((req, res, ex) -> res.sendError(401))
-                        .permitAll()
-                )
+
+                // ✅ Logout ostaje, ali sad je tvoj session login
                 .logout(logout -> logout
-                        .logoutUrl("/api/logout")              // ✅ bitno
-                        .logoutSuccessHandler((req, res, auth) -> res.setStatus(200)) // bez redirect
+                        .logoutUrl("/api/logout")
+                        .logoutSuccessHandler((req, res, auth) -> res.setStatus(200))
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
                 );

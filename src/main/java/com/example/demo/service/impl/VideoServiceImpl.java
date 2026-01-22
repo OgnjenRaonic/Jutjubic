@@ -46,7 +46,6 @@ public class VideoServiceImpl implements VideoService {
         User author = userRepository.findByEmail(authEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        // napravi folder-e ako ne postoje
         Path thumbDir = Path.of("./uploads/thumbnails");
         Path videoDir = Path.of("./uploads/videos");
 
@@ -54,18 +53,15 @@ public class VideoServiceImpl implements VideoService {
             Files.createDirectories(thumbDir);
             Files.createDirectories(videoDir);
 
-            // generiši unique nazive (da se ne pregazi)
             String thumbName = UUID.randomUUID() + "-" + thumbnail.getOriginalFilename();
             String videoName = UUID.randomUUID() + "-" + video.getOriginalFilename();
 
             Path thumbPath = thumbDir.resolve(thumbName);
             Path videoPath = videoDir.resolve(videoName);
 
-            // snimi fajlove
             thumbnail.transferTo(thumbPath);
             video.transferTo(videoPath);
 
-            // entitet
             Video v = new Video();
             v.setAuthor(author);
             v.setTitle(data.getTitle());
@@ -115,7 +111,6 @@ public class VideoServiceImpl implements VideoService {
         return new FileSystemResource(p);
     }
 
-    // ✅ thumbnail caching (backend cache umesto stalnog čitanja sa diska)
     @Override
     @Cacheable(cacheNames = "videoThumbnails", key = "#id")
     public ThumbnailPayload loadThumbnail(Long id) throws IOException {
@@ -146,15 +141,12 @@ public class VideoServiceImpl implements VideoService {
         if (video == null || video.isEmpty()) throw new IllegalArgumentException("Video is required");
         String videoCt = video.getContentType() == null ? "" : video.getContentType();
         if (!"video/mp4".equalsIgnoreCase(videoCt)) {
-            // neki browseri šalju application/octet-stream, pa možeš popustiti ako hoćeš:
-            // throw new IllegalArgumentException("Video must be video/mp4");
         }
         long max = 200L * 1024 * 1024;
         if (video.getSize() > max) throw new IllegalArgumentException("Video max size is 200MB");
     }
 
     private void saveWithTimeout(MultipartFile file, Path dest, int timeoutSeconds) throws Exception {
-        // pokušaj da snimi fajl i prekini čekanje posle timeout-a
         ExecutorService ex = Executors.newSingleThreadExecutor();
         Future<?> f = ex.submit(() -> {
             try {
