@@ -38,16 +38,13 @@ public class AuthController {
         context.setAuthentication(auth);
         SecurityContextHolder.setContext(context);
 
-        // ✅ 1) forsiraj session da postoji
         request.getSession(true);
 
-        // ✅ 2) upiši SecurityContext u session
         securityContextRepository.saveContext(context, request, response);
 
         return ResponseEntity.ok(new MeResponse(auth.getName()));
     }
 
-    // ✅ endpoint da proveriš da li session radi
     @GetMapping("/me")
     public ResponseEntity<?> me(Authentication auth) {
         if (auth == null) return ResponseEntity.status(401).build();

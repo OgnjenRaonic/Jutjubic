@@ -43,7 +43,6 @@ public class SecurityConfig {
         return provider;
     }
 
-    // ✅ CORS (ako koristiš proxy, nije ni potrebno, ali ne smeta)
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration cfg = new CorsConfiguration();
@@ -51,10 +50,8 @@ public class SecurityConfig {
         cfg.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
         cfg.setAllowedHeaders(List.of("Content-Type", "Authorization", "X-Requested-With"));
 
-        // ✅ KLJUČNO jer ti Angular šalje withCredentials:true
         cfg.setAllowCredentials(true);
 
-        // ✅ da browser sme da vidi Set-Cookie (često pomaže kod debug-a / session)
         cfg.setExposedHeaders(List.of("Set-Cookie"));
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
