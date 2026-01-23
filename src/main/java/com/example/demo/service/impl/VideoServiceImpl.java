@@ -13,12 +13,13 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.file.*;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.*;
@@ -46,8 +47,8 @@ public class VideoServiceImpl implements VideoService {
         User author = userRepository.findByEmail(authEmail)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        Path thumbDir = Path.of("./uploads/thumbnails");
-        Path videoDir = Path.of("./uploads/videos");
+        Path thumbDir = Path.of(baseDir+"/thumbnails");
+        Path videoDir = Path.of(baseDir+"/videos");
 
         try {
             Files.createDirectories(thumbDir);
@@ -146,6 +147,14 @@ public class VideoServiceImpl implements VideoService {
         if (video.getSize() > max) throw new IllegalArgumentException("Video max size is 200MB");
     }
 
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Override
+    public long registerView(Long id) {
+        int updated = videoRepository.incrementViewCount(id);
+        if (updated == 0) throw new IllegalArgumentException("Video not found");
+        return videoRepository.getViewCount(id);
+    }
+
     private void saveWithTimeout(MultipartFile file, Path dest, int timeoutSeconds) throws Exception {
         ExecutorService ex = Executors.newSingleThreadExecutor();
         Future<?> f = ex.submit(() -> {
@@ -190,6 +199,7 @@ public class VideoServiceImpl implements VideoService {
         dto.setDescription(v.getDescription());
         dto.setTags(v.getTags());
         dto.setLocation(v.getGeoLocation());
+        dto.setViewCount(v.getViewCount());
         return dto;
     }
 }

@@ -27,6 +27,12 @@ public class VideoController {
         this.videoService = videoService;
     }
 
+    @PostMapping("/{id}/view")
+    public ResponseEntity<Long> registerView(@PathVariable Long id) {
+        long newCount = videoService.registerView(id);
+        return ResponseEntity.ok(newCount);
+    }
+
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public VideoDTO create(
             @ModelAttribute CreateVideoDTO data,

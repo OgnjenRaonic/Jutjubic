@@ -18,6 +18,10 @@ public class VideoDTO {
 
     private String ownerEmail;    // ko je postavio (auth.getName())
 
+    private long viewCount;
+    public long getViewCount() { return viewCount; }
+    public void setViewCount(long viewCount) { this.viewCount = viewCount; }
+
     public VideoDTO() {}
 
     public Long getId() { return id; }
