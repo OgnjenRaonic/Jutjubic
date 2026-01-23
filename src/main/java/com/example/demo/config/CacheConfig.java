@@ -12,6 +12,6 @@ public class CacheConfig {
 
     @Bean
     public CacheManager cacheManager() {
-        return new ConcurrentMapCacheManager("videoThumbnails");
+        return new ConcurrentMapCacheManager("videoThumbnails", "comments");
     }
 }
