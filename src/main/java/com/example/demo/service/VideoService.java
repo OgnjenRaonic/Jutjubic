@@ -3,6 +3,8 @@ package com.example.demo.service;
 import com.example.demo.dtos.CreateVideoDTO;
 import com.example.demo.dtos.VideoDTO;
 import org.springframework.core.io.Resource;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -18,6 +20,9 @@ public interface VideoService {
     Resource getVideoResource(Long id) throws IOException;
 
     ThumbnailPayload loadThumbnail(Long id) throws IOException;
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    long registerView(Long id);
 
     record ThumbnailPayload(byte[] bytes, String contentType) {}
 }

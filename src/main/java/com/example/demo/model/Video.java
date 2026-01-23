@@ -23,6 +23,10 @@ public class Video {
     @Column(nullable = false, length = 2000)
     private String description;
 
+    @Column(name = "view_count", nullable = false)
+    private long viewCount = 0;
+    public long getViewCount() { return viewCount; }
+    public void setViewCount(long viewCount) { this.viewCount = viewCount; }
     @ElementCollection
     @CollectionTable(name = "video_tags", joinColumns = @JoinColumn(name = "video_id"))
     @Column(name = "tag", nullable = false, length = 50)
@@ -32,7 +36,7 @@ public class Video {
     private Instant createdAt;
 
     @Column(length = 255)
-    private String geoLocation; // opciono
+    private String geoLocation;
 
     @Column(nullable = false, length = 500)
     private String thumbnailPath;
