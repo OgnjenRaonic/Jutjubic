@@ -8,6 +8,7 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -75,6 +76,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/videos/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/comments/video/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/videos").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/upload").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/videos/*/view").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/videos/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/comments/video/**").authenticated()

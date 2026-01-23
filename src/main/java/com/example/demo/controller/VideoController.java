@@ -43,7 +43,7 @@ public class VideoController {
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public VideoDTO create(
-            @ModelAttribute CreateVideoDTO data,
+            @RequestPart("data") CreateVideoDTO data,
             @RequestPart("thumbnail") MultipartFile thumbnail,
             @RequestPart("video") MultipartFile video,
             Authentication auth
