@@ -2,6 +2,7 @@ package com.example.demo.model;
 
 import jakarta.persistence.*;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -34,6 +35,9 @@ public class Video {
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
+
+    @Column(name = "scheduled_at")
+    private LocalDateTime scheduledAt;
 
     @Column(length = 255)
     private String geoLocation;
@@ -74,4 +78,7 @@ public class Video {
 
     public String getVideoPath() { return videoPath; }
     public void setVideoPath(String videoPath) { this.videoPath = videoPath; }
+
+    public LocalDateTime getScheduledAt() { return scheduledAt; }
+    public void setScheduledAt(LocalDateTime scheduledAt) { this.scheduledAt = scheduledAt; }
 }

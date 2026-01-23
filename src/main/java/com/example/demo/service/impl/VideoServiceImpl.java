@@ -200,6 +200,23 @@ public class VideoServiceImpl implements VideoService {
         dto.setTags(v.getTags());
         dto.setLocation(v.getGeoLocation());
         dto.setViewCount(v.getViewCount());
+        dto.setScheduledAt(v.getScheduledAt());
+        dto.setCreatedAt(v.getCreatedAt() == null ? null : 
+            java.time.LocalDateTime.ofInstant(v.getCreatedAt(), java.time.ZoneId.systemDefault()));
+        
+        // Postavi availability i offset
+        if (v.getScheduledAt() == null) {
+            dto.setAvailable(true);
+            dto.setCurrentOffsetSeconds(null);
+        } else {
+            java.time.LocalDateTime now = java.time.LocalDateTime.now();
+            dto.setAvailable(!now.isBefore(v.getScheduledAt()));
+            if (dto.isAvailable()) {
+                java.time.Duration duration = java.time.Duration.between(v.getScheduledAt(), now);
+                dto.setCurrentOffsetSeconds((int) duration.getSeconds());
+            }
+        }
+        
         return dto;
     }
 }
