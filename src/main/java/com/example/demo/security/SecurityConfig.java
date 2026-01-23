@@ -74,9 +74,12 @@ public class SecurityConfig {
                         .requestMatchers("/activate", "/api/activate").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/register", "/api/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/videos/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/comments/video/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/videos").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/upload").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/videos/*/view").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/comments/video/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/comments/rate-limit-info").authenticated()
                         .anyRequest().authenticated()
                 )
 
