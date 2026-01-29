@@ -112,10 +112,22 @@ public class VideoServiceImpl implements VideoService {
         // Getuj sve videe i sortiraj po trending score-u
         List<Video> allVideos = videoRepository.findAll();
         
+        // Čuva DTO i score u privremenom objektu
+        class VideoWithScore {
+            VideoDTO dto;
+            double score;
+            VideoWithScore(VideoDTO dto, double score) {
+                this.dto = dto;
+                this.score = score;
+            }
+        }
+        
         return allVideos.stream()
-                .map(v -> new Object() {
+                .map(v -> {
                     VideoDTO dto = toDto(v);
                     double score = calculateTrendingScore(v);
+                    dto.setTrendingScore(score); // POSTAVI SCORE U DTO
+                    return new VideoWithScore(dto, score);
                 })
                 .sorted((a, b) -> Double.compare(b.score, a.score)) // Silazno sortiranje
                 .limit(limit)
@@ -126,34 +138,68 @@ public class VideoServiceImpl implements VideoService {
     /**
      * Računa trending score videa na osnovu:
      * - Broj pregleda (30%)
-     * - Recency (starost videa) (40%)
-     * - Engagement (komentari ako postoje) (30%)
+     * - Recency (starost videa) (30%)
+     * - Komentari (20%)
+     * - Tag popularnost (20%)
      */
     private double calculateTrendingScore(Video video) {
         long now = System.currentTimeMillis();
         long videoAgeMs = now - video.getCreatedAt().toEpochMilli();
-        
-        // Parametri
-        double viewScore = video.getViewCount(); // Raw view count
-        
-        // Recency decay: videi kreirani pre 7 dana imaju score od 0.5
-        // Svaki dan starosti smanjuje score za ~5%
         double ageInDays = videoAgeMs / (1000.0 * 60 * 60 * 24);
-        double recencyScore = Math.exp(-0.05 * ageInDays); // Exponential decay
         
-        // Normalizuj za lakšu kombinaciju
-        // viewScore: normalizuj na 0-100 (pretpostavljamo max 1000 views)
-        double normalizedViewScore = Math.min(100, (viewScore / 10.0));
+        // 1. Pregledi (30%) - logaritamska normalizacija
+        double viewScore = Math.log1p(video.getViewCount()) / Math.log1p(100);
+        viewScore = Math.min(1.0, viewScore);
         
-        // Kombiniraj: 30% views + 40% recency
-        double trendingScore = (normalizedViewScore * 0.3) + (recencyScore * 100 * 0.4);
+        // 2. Recency (30%) - logaritamski decay
+        // Novi video (age=0) = 1.0, star 30 dana ≈ 0.5
+        double recencyScore = 1.0 / (1.0 + Math.log1p(ageInDays));
+        recencyScore = Math.min(1.0, recencyScore);
         
-        System.out.println("[TRENDING] Video #" + video.getId() + ": views=" + viewScore 
-            + ", age_days=" + String.format("%.1f", ageInDays) 
-            + ", recency_score=" + String.format("%.2f", recencyScore)
-            + ", final_score=" + String.format("%.2f", trendingScore));
+        // 3. Komentari (20%)
+        double commentScore = Math.log1p(video.getCommentCount()) / Math.log1p(50);
+        commentScore = Math.min(1.0, commentScore);
         
-        return trendingScore;
+        // 4. Tag popularnost (20%)
+        double tagScore = calculateTagPopularityScore(video);
+        
+        // Finalna kombinacija
+        double finalScore = 
+            (viewScore * 30) +
+            (recencyScore * 30) +
+            (commentScore * 20) +
+            (tagScore * 20);
+        
+        System.out.println("[TRENDING] Video #" + video.getId() 
+            + ": views=" + String.format("%.2f", viewScore * 30)
+            + ", recency=" + String.format("%.2f", recencyScore * 30)
+            + ", comments=" + String.format("%.2f", commentScore * 20)
+            + ", tags=" + String.format("%.2f", tagScore * 20)
+            + " => TOTAL=" + String.format("%.2f", finalScore));
+        
+        return finalScore;
+    }
+
+    private double calculateTagPopularityScore(Video video) {
+        if (video.getTags() == null || video.getTags().isEmpty()) {
+            return 0.0;
+        }
+        
+        List<Video> allVideos = videoRepository.findAll();
+        double maxPopularity = 0;
+        for (String tag : video.getTags()) {
+            // Koliko drugih videa koristi ovaj tag
+            long tagCount = allVideos.stream()
+                .filter(v -> !v.getId().equals(video.getId()))
+                .filter(v -> v.getTags() != null && v.getTags().contains(tag))
+                .count();
+            
+            // Normalizuj: max 50 videa = 1.0
+            double tagPopularity = Math.min(1.0, tagCount / 50.0);
+            maxPopularity = Math.max(maxPopularity, tagPopularity);
+        }
+        
+        return maxPopularity;
     }
 
     @Override

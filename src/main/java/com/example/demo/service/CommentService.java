@@ -2,8 +2,10 @@ package com.example.demo.service;
 
 import com.example.demo.model.Comment;
 import com.example.demo.model.User;
+import com.example.demo.model.Video;
 import com.example.demo.repository.CommentRepository;
 import com.example.demo.repository.UserRepository;
+import com.example.demo.repository.VideoRepository;
 import com.example.demo.dtos.CommentDTO;
 import com.example.demo.dtos.CommentPageResponse;
 import com.example.demo.dtos.CreateCommentDTO;
@@ -28,6 +30,9 @@ public class CommentService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private VideoRepository videoRepository;
 
     @Autowired
     private CommentRateLimiter rateLimiter;
@@ -73,8 +78,16 @@ public class CommentService {
         User user = userRepository.findById(userId)
             .orElseThrow(() -> new IllegalArgumentException("Korisnik nije pronađen"));
 
+        // Pronađi video i povećaj broj komentara
+        Video video = videoRepository.findById(videoId)
+            .orElseThrow(() -> new IllegalArgumentException("Video nije pronađen"));
+        
         Comment comment = new Comment(videoId, user, dto.getText());
         Comment saved = commentRepository.save(comment);
+
+        // Povećaj commentCount na videu
+        video.setCommentCount(video.getCommentCount() + 1);
+        videoRepository.save(video);
 
         // Beleži komentar za rate limiting
         rateLimiter.recordComment(userId);

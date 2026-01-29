@@ -3,24 +3,25 @@ package com.example.demo.dtos;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.example.demo.model.VideoQuality;
+
 public class VideoDTO {
 
     private Long id;
-
     private String title;
     private String description;
-
     private List<String> tags;
-
     private LocalDateTime createdAt;
-
-    private String location;      // opciono (može null)
-
-    private String ownerEmail;    // ko je postavio (auth.getName())
-
+    private String location;
+    private String ownerEmail;
     private long viewCount;
-    public long getViewCount() { return viewCount; }
-    public void setViewCount(long viewCount) { this.viewCount = viewCount; }
+    private long commentCount;
+    private LocalDateTime scheduledAt;
+    private boolean available;
+    private Integer currentOffsetSeconds;
+    private VideoQuality quality;
+    private String thumbnailPath;
+    private Double trendingScore;
 
     public VideoDTO() {}
 
@@ -44,4 +45,28 @@ public class VideoDTO {
 
     public String getOwnerEmail() { return ownerEmail; }
     public void setOwnerEmail(String ownerEmail) { this.ownerEmail = ownerEmail; }
+
+    public long getViewCount() { return viewCount; }
+    public void setViewCount(long viewCount) { this.viewCount = viewCount; }
+
+    public long getCommentCount() { return commentCount; }
+    public void setCommentCount(long commentCount) { this.commentCount = commentCount; }
+
+    public LocalDateTime getScheduledAt() { return scheduledAt; }
+    public void setScheduledAt(LocalDateTime scheduledAt) { this.scheduledAt = scheduledAt; }
+
+    public boolean isAvailable() { return available; }
+    public void setAvailable(boolean available) { this.available = available; }
+
+    public Integer getCurrentOffsetSeconds() { return currentOffsetSeconds; }
+    public void setCurrentOffsetSeconds(Integer currentOffsetSeconds) { this.currentOffsetSeconds = currentOffsetSeconds; }
+
+    public VideoQuality getQuality() { return quality; }
+    public void setQuality(VideoQuality quality) { this.quality = quality; }
+
+    public String getThumbnailPath() { return thumbnailPath; }
+    public void setThumbnailPath(String thumbnailPath) { this.thumbnailPath = thumbnailPath; }
+
+    public Double getTrendingScore() { return trendingScore; }
+    public void setTrendingScore(Double trendingScore) { this.trendingScore = trendingScore; }
 }
