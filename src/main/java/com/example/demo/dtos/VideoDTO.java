@@ -3,6 +3,8 @@ package com.example.demo.dtos;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.example.demo.model.VideoQuality;
+
 public class VideoDTO {
 
     private Long id;
@@ -16,6 +18,8 @@ public class VideoDTO {
     private LocalDateTime scheduledAt; // za zakazane videe
     private boolean available;    // da li je dostupan sada
     private Integer currentOffsetSeconds; // trenutni offset u streaming modu
+    private VideoQuality quality; // kvalitet videa (LOW, MEDIUM, HIGH)
+    private String thumbnailPath; // putanja do thumbnail-a
 
     public VideoDTO() {}
 
@@ -51,4 +55,10 @@ public class VideoDTO {
 
     public Integer getCurrentOffsetSeconds() { return currentOffsetSeconds; }
     public void setCurrentOffsetSeconds(Integer currentOffsetSeconds) { this.currentOffsetSeconds = currentOffsetSeconds; }
+
+    public VideoQuality getQuality() { return quality; }
+    public void setQuality(VideoQuality quality) { this.quality = quality; }
+
+    public String getThumbnailPath() { return thumbnailPath; }
+    public void setThumbnailPath(String thumbnailPath) { this.thumbnailPath = thumbnailPath; }
 }

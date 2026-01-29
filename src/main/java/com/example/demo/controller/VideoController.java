@@ -1,25 +1,41 @@
 package com.example.demo.controller;
 
-import com.example.demo.dtos.CreateVideoDTO;
-import com.example.demo.dtos.VideoDTO;
-import com.example.demo.dtos.UpdateVideoDTO;
-import com.example.demo.dtos.ScheduledStreamResponse;
-import com.example.demo.service.VideoService;
-import com.example.demo.service.ScheduledStreamingService;
-import com.example.demo.security.CustomUserDetails;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.support.ResourceRegion;
-import org.springframework.http.*;
-import org.springframework.http.MediaTypeFactory;
-import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
-
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.support.ResourceRegion;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpRange;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.MediaTypeFactory;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.example.demo.dtos.CreateVideoDTO;
+import com.example.demo.dtos.ScheduledStreamResponse;
+import com.example.demo.dtos.UpdateVideoDTO;
+import com.example.demo.dtos.VideoDTO;
+import com.example.demo.service.ScheduledStreamingService;
+import com.example.demo.service.VideoService;
 
 @RestController
 @RequestMapping("/api/videos")
@@ -140,7 +156,22 @@ public class VideoController {
             // Ažuriraj zakazano vreme ako je dostavljeno
             if (dto.getScheduledAt() != null && !dto.getScheduledAt().isEmpty()) {
                 DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
-                LocalDateTime scheduledAt = LocalDateTime.parse(dto.getScheduledAt(), formatter);
+                LocalDateTime scheduledAt;
+                
+                // Pokušaj da parsiram sa vremenskom zonom
+                try {
+                    ZonedDateTime zonedDateTime = ZonedDateTime.parse(dto.getScheduledAt(), formatter);
+                    // Ako ima zone, konvertuj u CET
+                    scheduledAt = zonedDateTime.withZoneSameInstant(ZoneId.of("Europe/Paris")).toLocalDateTime();
+                } catch (DateTimeParseException e) {
+                    // Ako nema zone u stringu, parsniraj kao LocalDateTime
+                    DateTimeFormatter localeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+                    LocalDateTime localDT = LocalDateTime.parse(dto.getScheduledAt(), localeFormatter);
+                    // VAŽNO: Pretpostavi da je ovo VEĆ CET vreme (jer dolazi sa frontenда koji je u CET)
+                    // Ne trebamo da konvertujemo, samo da preuzmemo kao što je
+                    scheduledAt = localDT;
+                }
+                
                 scheduledStreamingService.scheduleVideo(id, scheduledAt);
             } else if (dto.getScheduledAt() != null && dto.getScheduledAt().isEmpty()) {
                 // Ako je prazan string, otkaži zakazivanje

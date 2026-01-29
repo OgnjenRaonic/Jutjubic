@@ -1,16 +1,21 @@
 package com.example.demo.service;
 
-import com.example.demo.model.Video;
-import com.example.demo.repository.VideoRepository;
-import com.example.demo.dtos.ScheduledStreamResponse;
+import java.io.File;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.io.File;
+import com.coremedia.iso.IsoFile;
+import com.coremedia.iso.boxes.MovieBox;
+import com.coremedia.iso.boxes.MovieHeaderBox;
+import com.example.demo.dtos.ScheduledStreamResponse;
+import com.example.demo.model.Video;
+import com.example.demo.repository.VideoRepository;
 
 @Service
 public class ScheduledStreamingService {
@@ -32,7 +37,7 @@ public class ScheduledStreamingService {
             return true; // Nema zakazanog vremena, video je javno dostupan
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Europe/Paris"));
         return !now.isBefore(video.getScheduledAt()); // Dostupan ako je sada >= zakazanog vremena
     }
 
@@ -49,7 +54,7 @@ public class ScheduledStreamingService {
             return null; // Nema zakazanog vremena, nije streaming
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Europe/Paris"));
         if (now.isBefore(video.getScheduledAt())) {
             return null; // Streaming još nije počeo
         }
@@ -85,7 +90,14 @@ public class ScheduledStreamingService {
         Integer offset = getCurrentStreamOffset(videoId);
         long duration = getVideoDurationSeconds(video);
         LocalDateTime scheduledAt = video.getScheduledAt();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Europe/Paris"));
+
+        System.out.println("[STREAM INFO] Video #" + videoId);
+        System.out.println("[STREAM INFO] Sada: " + now);
+        System.out.println("[STREAM INFO] Zakazano: " + scheduledAt);
+        System.out.println("[STREAM INFO] Trajanje: " + duration + "s");
+        System.out.println("[STREAM INFO] Offset: " + offset + "s");
+        System.out.println("[STREAM INFO] Dostupan: " + isAvailable);
 
         String streamStatus;
         String message;
@@ -101,6 +113,8 @@ public class ScheduledStreamingService {
             streamStatus = "LIVE";
             message = "Streaming je u toku";
         }
+        
+        System.out.println("[STREAM INFO] Status: " + streamStatus);
 
         return new ScheduledStreamResponse(
             videoId,
@@ -116,7 +130,7 @@ public class ScheduledStreamingService {
 
     /**
      * Pronalazi trajanje videa u sekundama analizirajući video fajl
-     * Za sada koristi default vrednost ili osnovnu procenu
+     * Koristi kvalitet videa (LOW, MEDIUM, HIGH) za adaptivnu procenu
      */
     private long getVideoDurationSeconds(Video video) {
         if (video.getVideoPath() == null || video.getVideoPath().isEmpty()) {
@@ -128,20 +142,64 @@ public class ScheduledStreamingService {
             if (!videoFile.exists()) {
                 return DEFAULT_DURATION_SECONDS;
             }
+            // Prvo pokušaj da dobiješ trajanje iz MP4 metapodataka
+            Long metaSeconds = getMp4DurationSeconds(videoFile);
+            if (metaSeconds != null && metaSeconds > 0) {
+                long bounded = Math.min(Math.max(metaSeconds, 10L), 7200L);
+                System.out.println("[DURATION] Metadata duration: " + metaSeconds + "s, final: " + bounded + "s");
+                return bounded;
+            }
 
-            // Pokušaj da koristi ffprobe da dobije trajanje (ako je dostupno)
-            // Za sada, koristi heurističku procenu po veličini fajla
-            // ~1MB = ~1 sekunda za prosečan video
+            // Ako metadata nije dostupna, koristi adaptivnu heuristiku na osnovu kvaliteta videa
+            // LOW (360p): ~0.6 MB/s
+            // MEDIUM (720p): ~1.2 MB/s
+            // HIGH (1080p+): ~2.0 MB/s
             long fileSizeBytes = videoFile.length();
-            long estimatedSeconds = Math.max(1, fileSizeBytes / (1024 * 1024)); // 1MB = 1s
+            long fileSizeMB = fileSizeBytes / (1024 * 1024);
             
-            // Ograniči na razumnu vrednost (max 1 sat)
-            return Math.min(estimatedSeconds, 3600);
+            double bitrateMBps = video.getQuality() != null ? 
+                video.getQuality().getBitrateMBps() : 1.2; // Default MEDIUM
+            
+            long estimatedSeconds = Math.max(10, (long)(fileSizeBytes / (bitrateMBps * 1024 * 1024)));
+            
+            System.out.println("[DURATION] Veličina: " + fileSizeMB + "MB");
+            System.out.println("[DURATION] Kvalitet: " + video.getQuality() + " (" + bitrateMBps + " MB/s)");
+            System.out.println("[DURATION] Procena (heuristika): " + estimatedSeconds + "s");
+            
+            // Ograniči na maksimalno 2 sata (razumno za streaming)
+            long result = Math.min(estimatedSeconds, 7200);
+            System.out.println("[DURATION] Finalno: " + result + "s");
+            
+            return result;
         } catch (Exception e) {
             return DEFAULT_DURATION_SECONDS;
         }
     }
 
+    /**
+     * Pokušava pročitati trajanje iz MP4 metapodataka koristeći isoparser
+     * Vraća trajanje u sekundama ili null ako nije moguće
+     */
+    private Long getMp4DurationSeconds(File videoFile) {
+        try (IsoFile iso = new IsoFile(videoFile.getAbsolutePath())) {
+            java.util.List<MovieBox> movieBoxes = iso.getBoxes(MovieBox.class);
+            if (movieBoxes == null || movieBoxes.isEmpty()) return null;
+
+            MovieBox mv = movieBoxes.get(0);
+            MovieHeaderBox mvhd = mv.getMovieHeaderBox();
+            if (mvhd == null) return null;
+
+            long timescale = mvhd.getTimescale();
+            long duration = mvhd.getDuration();
+            if (timescale <= 0) return null;
+
+            long seconds = (duration + timescale - 1) / timescale; // ceil
+            return seconds;
+        } catch (Exception e) {
+            System.out.println("[DURATION] Metadata read failed: " + e.getMessage());
+            return null;
+        }
+    }
     /**
      * Formatira Duration u čitljiv string
      */
@@ -167,12 +225,19 @@ public class ScheduledStreamingService {
         Video video = videoRepository.findById(videoId)
             .orElseThrow(() -> new IllegalArgumentException("Video nije pronađen"));
 
-        if (scheduledAt != null && scheduledAt.isBefore(LocalDateTime.now())) {
+        LocalDateTime now = LocalDateTime.now(ZoneId.of("Europe/Paris"));
+        System.out.println("[SCHEDULE] Zahtev za video #" + videoId);
+        System.out.println("[SCHEDULE] Sada: " + now);
+        System.out.println("[SCHEDULE] Zakazano: " + scheduledAt);
+        
+        if (scheduledAt != null && scheduledAt.isBefore(now)) {
+            System.out.println("[SCHEDULE] Greškaže je u prošlosti!");
             throw new IllegalArgumentException("Zakazano vreme ne može biti u prošlosti");
         }
 
         video.setScheduledAt(scheduledAt);
         videoRepository.save(video);
+        System.out.println("[SCHEDULE] Uspešno zakazano!");
     }
 
     /**

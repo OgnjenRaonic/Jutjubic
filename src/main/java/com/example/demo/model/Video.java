@@ -1,10 +1,24 @@
 package com.example.demo.model;
 
-import jakarta.persistence.*;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "videos")
@@ -48,6 +62,10 @@ public class Video {
     @Column(nullable = false, length = 500)
     private String videoPath;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private VideoQuality quality = VideoQuality.MEDIUM;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) createdAt = Instant.now();
@@ -81,4 +99,7 @@ public class Video {
 
     public LocalDateTime getScheduledAt() { return scheduledAt; }
     public void setScheduledAt(LocalDateTime scheduledAt) { this.scheduledAt = scheduledAt; }
+
+    public VideoQuality getQuality() { return quality; }
+    public void setQuality(VideoQuality quality) { this.quality = quality; }
 }
