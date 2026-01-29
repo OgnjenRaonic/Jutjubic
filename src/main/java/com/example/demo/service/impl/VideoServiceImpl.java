@@ -1,12 +1,17 @@
 package com.example.demo.service.impl;
 
-import com.example.demo.dtos.CreateVideoDTO;
-import com.example.demo.dtos.VideoDTO;
-import com.example.demo.model.User;
-import com.example.demo.model.Video;
-import com.example.demo.repository.UserRepository;
-import com.example.demo.repository.VideoRepository;
-import com.example.demo.service.VideoService;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.io.FileSystemResource;
@@ -17,12 +22,13 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.*;
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.*;
+import com.example.demo.dtos.CreateVideoDTO;
+import com.example.demo.dtos.VideoDTO;
+import com.example.demo.model.User;
+import com.example.demo.model.Video;
+import com.example.demo.repository.UserRepository;
+import com.example.demo.repository.VideoRepository;
+import com.example.demo.service.VideoService;
 
 @Service
 public class VideoServiceImpl implements VideoService {
@@ -69,6 +75,7 @@ public class VideoServiceImpl implements VideoService {
             v.setDescription(data.getDescription());
             v.setTags(data.getTags());
             v.setGeoLocation(data.getLocation());
+            v.setQuality(data.getQuality()); // Postavi kvalitet iz DTO-a
             v.setCreatedAt(Instant.now());
 
             v.setThumbnailPath(thumbPath.toString());
@@ -113,7 +120,6 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    @Cacheable(cacheNames = "videoThumbnails", key = "#id")
     public ThumbnailPayload loadThumbnail(Long id) throws IOException {
         Video v = videoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Video not found"));
@@ -200,6 +206,26 @@ public class VideoServiceImpl implements VideoService {
         dto.setTags(v.getTags());
         dto.setLocation(v.getGeoLocation());
         dto.setViewCount(v.getViewCount());
+        dto.setScheduledAt(v.getScheduledAt());
+        dto.setQuality(v.getQuality()); // Dodaj quality
+        dto.setThumbnailPath(v.getThumbnailPath()); // Dodaj thumbnail path
+        dto.setOwnerEmail(v.getAuthor() != null ? v.getAuthor().getEmail() : null);
+        dto.setCreatedAt(v.getCreatedAt() == null ? null :
+            java.time.LocalDateTime.ofInstant(v.getCreatedAt(), java.time.ZoneId.systemDefault()));
+        
+        // Postavi availability i offset
+        if (v.getScheduledAt() == null) {
+            dto.setAvailable(true);
+            dto.setCurrentOffsetSeconds(null);
+        } else {
+            java.time.LocalDateTime now = java.time.LocalDateTime.now(java.time.ZoneId.of("Europe/Paris"));
+            dto.setAvailable(!now.isBefore(v.getScheduledAt()));
+            if (dto.isAvailable()) {
+                java.time.Duration duration = java.time.Duration.between(v.getScheduledAt(), now);
+                dto.setCurrentOffsetSeconds((int) duration.getSeconds());
+            }
+        }
+        
         return dto;
     }
 }
