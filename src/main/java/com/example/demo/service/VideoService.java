@@ -1,14 +1,15 @@
 package com.example.demo.service;
 
-import com.example.demo.dtos.CreateVideoDTO;
-import com.example.demo.dtos.VideoDTO;
+import java.io.IOException;
+import java.util.List;
+
 import org.springframework.core.io.Resource;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.util.List;
+import com.example.demo.dtos.CreateVideoDTO;
+import com.example.demo.dtos.VideoDTO;
 
 public interface VideoService {
 
@@ -16,6 +17,8 @@ public interface VideoService {
 
     List<VideoDTO> listNewestFirst();
     VideoDTO getById(Long id);
+
+    List<VideoDTO> getTrendingVideos(int limit);
 
     Resource getVideoResource(Long id) throws IOException;
 

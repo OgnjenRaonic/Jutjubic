@@ -1,12 +1,17 @@
 package com.example.demo.service.impl;
 
-import com.example.demo.dtos.CreateVideoDTO;
-import com.example.demo.dtos.VideoDTO;
-import com.example.demo.model.User;
-import com.example.demo.model.Video;
-import com.example.demo.repository.UserRepository;
-import com.example.demo.repository.VideoRepository;
-import com.example.demo.service.VideoService;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.core.io.FileSystemResource;
@@ -17,12 +22,13 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.nio.file.*;
-import java.time.Instant;
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.*;
+import com.example.demo.dtos.CreateVideoDTO;
+import com.example.demo.dtos.VideoDTO;
+import com.example.demo.model.User;
+import com.example.demo.model.Video;
+import com.example.demo.repository.UserRepository;
+import com.example.demo.repository.VideoRepository;
+import com.example.demo.service.VideoService;
 
 @Service
 public class VideoServiceImpl implements VideoService {
@@ -99,6 +105,55 @@ public class VideoServiceImpl implements VideoService {
         Video v = videoRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Video not found"));
         return toDto(v);
+    }
+
+    @Override
+    public List<VideoDTO> getTrendingVideos(int limit) {
+        // Getuj sve videe i sortiraj po trending score-u
+        List<Video> allVideos = videoRepository.findAll();
+        
+        return allVideos.stream()
+                .map(v -> new Object() {
+                    VideoDTO dto = toDto(v);
+                    double score = calculateTrendingScore(v);
+                })
+                .sorted((a, b) -> Double.compare(b.score, a.score)) // Silazno sortiranje
+                .limit(limit)
+                .map(obj -> obj.dto)
+                .toList();
+    }
+
+    /**
+     * Računa trending score videa na osnovu:
+     * - Broj pregleda (30%)
+     * - Recency (starost videa) (40%)
+     * - Engagement (komentari ako postoje) (30%)
+     */
+    private double calculateTrendingScore(Video video) {
+        long now = System.currentTimeMillis();
+        long videoAgeMs = now - video.getCreatedAt().toEpochMilli();
+        
+        // Parametri
+        double viewScore = video.getViewCount(); // Raw view count
+        
+        // Recency decay: videi kreirani pre 7 dana imaju score od 0.5
+        // Svaki dan starosti smanjuje score za ~5%
+        double ageInDays = videoAgeMs / (1000.0 * 60 * 60 * 24);
+        double recencyScore = Math.exp(-0.05 * ageInDays); // Exponential decay
+        
+        // Normalizuj za lakšu kombinaciju
+        // viewScore: normalizuj na 0-100 (pretpostavljamo max 1000 views)
+        double normalizedViewScore = Math.min(100, (viewScore / 10.0));
+        
+        // Kombiniraj: 30% views + 40% recency
+        double trendingScore = (normalizedViewScore * 0.3) + (recencyScore * 100 * 0.4);
+        
+        System.out.println("[TRENDING] Video #" + video.getId() + ": views=" + viewScore 
+            + ", age_days=" + String.format("%.1f", ageInDays) 
+            + ", recency_score=" + String.format("%.2f", recencyScore)
+            + ", final_score=" + String.format("%.2f", trendingScore));
+        
+        return trendingScore;
     }
 
     @Override
