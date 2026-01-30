@@ -12,6 +12,7 @@ public class VideoDTO {
     private String description;
     private List<String> tags;
     private LocalDateTime createdAt;
+
     private String location;
     private String ownerEmail;
     private long viewCount;
@@ -22,6 +23,7 @@ public class VideoDTO {
     private VideoQuality quality;
     private String thumbnailPath;
     private Double trendingScore;
+
 
     public VideoDTO() {}
 
@@ -49,8 +51,10 @@ public class VideoDTO {
     public long getViewCount() { return viewCount; }
     public void setViewCount(long viewCount) { this.viewCount = viewCount; }
 
+
     public long getCommentCount() { return commentCount; }
     public void setCommentCount(long commentCount) { this.commentCount = commentCount; }
+
 
     public LocalDateTime getScheduledAt() { return scheduledAt; }
     public void setScheduledAt(LocalDateTime scheduledAt) { this.scheduledAt = scheduledAt; }

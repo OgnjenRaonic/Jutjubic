@@ -1,9 +1,16 @@
 package com.example.demo.controller;
 
 import java.io.IOException;
+
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourceRegion;
 import org.springframework.http.CacheControl;
@@ -25,7 +32,11 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.demo.dtos.CreateVideoDTO;
+
+import com.example.demo.dtos.ScheduledStreamResponse;
+import com.example.demo.dtos.UpdateVideoDTO;
 import com.example.demo.dtos.VideoDTO;
+import com.example.demo.service.ScheduledStreamingService;
 import com.example.demo.service.VideoService;
 
 @RestController
@@ -35,15 +46,24 @@ public class VideoController {
     private static final long CHUNK_SIZE = 1024 * 1024; // 1MB chunk (ok za premotavanje)
 
     private final VideoService videoService;
+    private final ScheduledStreamingService scheduledStreamingService;
+    private final ViewService viewService;
 
-    public VideoController(VideoService videoService) {
+    public VideoController(VideoService videoService, ViewService viewService, ScheduledStreamingService scheduledStreamingService) {
         this.videoService = videoService;
+        this.scheduledStreamingService = scheduledStreamingService;
+        this.viewService = viewService;
     }
 
     @PostMapping("/{id}/view")
-    public ResponseEntity<Long> registerView(@PathVariable Long id) {
-        long newCount = videoService.registerView(id);
-        return ResponseEntity.ok(newCount);
+    public ResponseEntity<?> registerView(
+            @PathVariable Long id,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lon,
+            HttpServletRequest request
+    ) {
+        viewService.registerView(id, lat, lon, request);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -117,4 +137,69 @@ public class VideoController {
                     .body(region);
         }
     }
-}
+
+    /**
+     * GET /api/videos/{id}/scheduled-info
+     * Dobija informacije o zakazanom videu i trenutnom streaming offsetu
+     */
+    @GetMapping("/{id}/scheduled-info")
+    public ResponseEntity<?> getScheduledInfo(@PathVariable Long id) {
+        try {
+            ScheduledStreamResponse info = scheduledStreamingService.getScheduledStreamInfo(id);
+            return ResponseEntity.ok(info);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Greška pri čitanju zakazane informacije: " + e.getMessage());
+        }
+    }
+
+    /**
+     * PUT /api/videos/{id}
+     * Ažurira video informacije uključujući zakazano vreme
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateVideo(
+            @PathVariable Long id,
+            @RequestBody UpdateVideoDTO dto,
+            Authentication auth) {
+        try {
+            // Privremeno - trebalo bi da se prosledi ID vlasnika
+            if (auth == null) {
+                return ResponseEntity.status(401).body("Morate biti prijavljeni");
+            }
+
+            // Ažuriraj zakazano vreme ako je dostavljeno
+            if (dto.getScheduledAt() != null && !dto.getScheduledAt().isEmpty()) {
+                DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
+                LocalDateTime scheduledAt;
+
+                // Pokušaj da parsiram sa vremenskom zonom
+                try {
+                    ZonedDateTime zonedDateTime = ZonedDateTime.parse(dto.getScheduledAt(), formatter);
+                    // Ako ima zone, konvertuj u CET
+                    scheduledAt = zonedDateTime.withZoneSameInstant(ZoneId.of("Europe/Paris")).toLocalDateTime();
+                } catch (DateTimeParseException e) {
+                    // Ako nema zone u stringu, parsniraj kao LocalDateTime
+                    DateTimeFormatter localeFormatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
+                    LocalDateTime localDT = LocalDateTime.parse(dto.getScheduledAt(), localeFormatter);
+                    // VAŽNO: Pretpostavi da je ovo VEĆ CET vreme (jer dolazi sa frontenда koji je u CET)
+                    // Ne trebamo da konvertujemo, samo da preuzmemo kao što je
+                    scheduledAt = localDT;
+                }
+
+                scheduledStreamingService.scheduleVideo(id, scheduledAt);
+            } else if (dto.getScheduledAt() != null && dto.getScheduledAt().isEmpty()) {
+                // Ako je prazan string, otkaži zakazivanje
+                scheduledStreamingService.unscheduleVideo(id);
+            }
+
+            // Dobij ažurirani video
+            VideoDTO updated = videoService.getById(id);
+            return ResponseEntity.ok(updated);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Greška pri ažuriranju videa: " + e.getMessage());
+        }
+    }}
