@@ -5,6 +5,7 @@ import com.example.demo.model.Video;
 import com.example.demo.model.VideoView;
 import com.example.demo.repository.VideoRepository;
 import com.example.demo.repository.VideoViewRepository;
+import com.example.demo.util.GeohashUtil;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,9 @@ public class ViewService  {
     @Value("${trending.cellSizeDeg:0.01}")
     private double cellSizeDeg;
 
+    @Value("${trending.geohashPrecision:5}")
+    private int geohashPrecision;
+
     public ViewService(VideoRepository videoRepository, VideoViewRepository videoViewRepository, GeoIpService geoIpService) {
         this.videoRepository = videoRepository;
         this.videoViewRepository = videoViewRepository;
@@ -32,15 +36,27 @@ public class ViewService  {
 
         GeoPoint p = (lat != null && lon != null)
                 ? new GeoPoint(lat, lon, "GPS")
-                : geoIpService.approximateFromRequest(request); // "IP" ili "DEFAULT_DEV"
+                : geoIpService.approximateFromRequest(request);
 
-        int cellLat = (int) Math.floor(p.lat() / cellSizeDeg);
-        int cellLon = (int) Math.floor(p.lon() / cellSizeDeg);
+        if (p == null
+                || Double.isNaN(p.getLat()) || Double.isNaN(p.getLon())
+                || p.getLat() < -90 || p.getLat() > 90
+                || p.getLon() < -180 || p.getLon() > 180) {
+            p = new GeoPoint(45.2671, 19.8335, "DEFAULT_DEV");
+        }
 
-        videoViewRepository.save(new VideoView(video, p.lat(), p.lon(), p.source(), cellLat, cellLon));
+        double cs = (cellSizeDeg > 0) ? cellSizeDeg : 0.01;
+        int cellLat = (int) Math.floor(p.getLat() / cs);
+        int cellLon = (int) Math.floor(p.getLon() / cs);
 
-        // zadrži postojeći globalni counter
+        int precision = geohashPrecision > 0 ? geohashPrecision : GeohashUtil.precisionForRadiusKm(10);
+        String geohash = GeohashUtil.encode(p.getLat(), p.getLon(), precision);
+
+        videoViewRepository.save(new VideoView(video, p.getLat(), p.getLon(), p.getSource(), cellLat, cellLon, geohash));
+
         video.setViewCount(video.getViewCount() + 1);
         videoRepository.save(video);
     }
+
+
 }

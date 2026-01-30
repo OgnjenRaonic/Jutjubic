@@ -26,4 +26,17 @@ public interface VideoViewRepository extends JpaRepository<VideoView, Long> {
             @Param("minCellLon") int minCellLon,
             @Param("maxCellLon") int maxCellLon
     );
+
+    @Query("""
+        SELECT vv.video.id, COUNT(vv.id)
+        FROM VideoView vv
+        WHERE vv.viewedAt >= :since
+          AND vv.geohash IN :hashes
+        GROUP BY vv.video.id
+        ORDER BY COUNT(vv.id) DESC
+    """)
+    List<Object[]> topVideoIdsInHashesSince(
+            @Param("since") Instant since,
+            @Param("hashes") List<String> hashes
+    );
 }

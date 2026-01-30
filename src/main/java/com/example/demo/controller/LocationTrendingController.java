@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.model.GeoPoint;
 import com.example.demo.service.GeoIpService;
+import com.example.demo.service.TrendingService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
