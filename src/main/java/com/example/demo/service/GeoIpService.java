@@ -70,7 +70,7 @@ public class GeoIpService {
 
     private GeoPoint defaultDevPoint() {
         // stavi BG/NS kako ti odgovara
-        return new GeoPoint(-36.243443, -65.900320, "DEFAULT_DEV");
+        return new GeoPoint(-45.2700, 19.8400, "DEFAULT_DEV");
     }
 
     private String extractClientIp(HttpServletRequest request) {

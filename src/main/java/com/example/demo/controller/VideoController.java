@@ -54,9 +54,11 @@ public class VideoController {
             @PathVariable Long id,
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lon,
+            @RequestParam(required = false, name = "lng") Double lng,
             HttpServletRequest request
     ) {
-        viewService.registerView(id, lat, lon, request);
+        Double resolvedLon = (lon != null) ? lon : lng;
+        viewService.registerView(id, lat, resolvedLon, request);
         return ResponseEntity.ok().build();
     }
 
