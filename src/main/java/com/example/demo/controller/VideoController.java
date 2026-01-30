@@ -3,6 +3,8 @@ package com.example.demo.controller;
 import com.example.demo.dtos.CreateVideoDTO;
 import com.example.demo.dtos.VideoDTO;
 import com.example.demo.service.VideoService;
+import com.example.demo.service.ViewService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.ResourceRegion;
 import org.springframework.http.*;
@@ -22,15 +24,21 @@ public class VideoController {
     private static final long CHUNK_SIZE = 1024 * 1024; // 1MB chunk (ok za premotavanje)
 
     private final VideoService videoService;
+    private final ViewService viewService;
 
-    public VideoController(VideoService videoService) {
+    public VideoController(VideoService videoService, ViewService viewService) {
         this.videoService = videoService;
+        this.viewService = viewService;
     }
-
     @PostMapping("/{id}/view")
-    public ResponseEntity<Long> registerView(@PathVariable Long id) {
-        long newCount = videoService.registerView(id);
-        return ResponseEntity.ok(newCount);
+    public ResponseEntity<?> registerView(
+            @PathVariable Long id,
+            @RequestParam(required = false) Double lat,
+            @RequestParam(required = false) Double lon,
+            HttpServletRequest request
+    ) {
+        viewService.registerView(id, lat, lon, request);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
