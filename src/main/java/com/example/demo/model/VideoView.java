@@ -10,6 +10,7 @@ import java.time.Instant;
                 @Index(name = "idx_views_time", columnList = "viewed_at"),
                 @Index(name = "idx_views_cell_time", columnList = "cell_lat,cell_lon,viewed_at"),
                 @Index(name = "idx_views_video_time", columnList = "video_id,viewed_at")
+                @Index(name="idx_views_geohash_time", columnList="geohash,viewed_at")
         }
 )
 public class VideoView {
@@ -24,6 +25,9 @@ public class VideoView {
 
     @Column(name = "viewed_at", nullable = false, updatable = false)
     private Instant viewedAt;
+
+    @Column(name="geohash", nullable=false, length=12)
+    private String geohash;
 
     @Column(name = "viewer_lat", nullable = false)
     private Double viewerLat;

@@ -1,4 +1,4 @@
-﻿package com.example.demo.service;
+package com.example.demo.service;
 
 import com.example.demo.model.GeoPoint;
 import jakarta.servlet.http.HttpServletRequest;
