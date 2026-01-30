@@ -1,2 +1,4 @@
--- Add quality column to videos; default MEDIUM
-ALTER TABLE videos ADD COLUMN quality varchar(255) NOT NULL DEFAULT 'MEDIUM';
+
+-- Add video_quality column to videos for video quality tracking
+ALTER TABLE videos ADD COLUMN IF NOT EXISTS quality varchar(255) DEFAULT 'MEDIUM';
+

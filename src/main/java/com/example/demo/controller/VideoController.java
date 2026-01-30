@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import java.io.IOException;
+
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -20,10 +21,18 @@ import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.demo.dtos.CreateVideoDTO;
+
 import com.example.demo.dtos.ScheduledStreamResponse;
 import com.example.demo.dtos.UpdateVideoDTO;
 import com.example.demo.dtos.VideoDTO;
@@ -70,6 +79,13 @@ public class VideoController {
     @GetMapping
     public List<VideoDTO> list() {
         return videoService.listNewestFirst();
+    }
+
+    @GetMapping("/trending")
+    public ResponseEntity<List<VideoDTO>> getTrending(
+            @RequestParam(defaultValue = "10") int limit) {
+        List<VideoDTO> trending = videoService.getTrendingVideos(Math.min(limit, 100)); // Max 100
+        return ResponseEntity.ok(trending);
     }
 
     @GetMapping("/{id}")
