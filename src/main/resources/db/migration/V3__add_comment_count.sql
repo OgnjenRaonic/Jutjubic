@@ -1,0 +1,2 @@
+-- Add comment_count column to videos for trending calculation
+-- Only add if it doesn't already exist
