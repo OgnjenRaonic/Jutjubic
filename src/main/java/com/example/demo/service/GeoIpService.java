@@ -20,7 +20,6 @@ public class GeoIpService {
             .connectTimeout(Duration.ofSeconds(2))
             .build();
 
-    // hvata: "latitude": 44.81  ili "latitude":"44.81"
     private static final Pattern LAT_PATTERN = Pattern.compile("\"latitude\"\\s*:\\s*\"?(-?\\d+(?:\\.\\d+)?)\"?");
     private static final Pattern LON_PATTERN = Pattern.compile("\"longitude\"\\s*:\\s*\"?(-?\\d+(?:\\.\\d+)?)\"?");
 
@@ -71,7 +70,7 @@ public class GeoIpService {
 
     private GeoPoint defaultDevPoint() {
         // stavi BG/NS kako ti odgovara
-        return new GeoPoint(45.2671, 19.8335, "DEFAULT_DEV");
+        return new GeoPoint(-36.243443, -65.900320, "DEFAULT_DEV");
     }
 
     private String extractClientIp(HttpServletRequest request) {
