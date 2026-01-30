@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.model.GeoPoint;
 import com.example.demo.service.GeoIpService;
+import com.example.demo.service.TrendingService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,11 +22,13 @@ public class LocationTrendingController {
     public ResponseEntity<?> localTrending(
             @RequestParam(required = false) Double lat,
             @RequestParam(required = false) Double lon,
+            @RequestParam(required = false, name = "lng") Double lng,
             @RequestParam(defaultValue = "10") double radiusKm,
             HttpServletRequest request
     ) {
-        GeoPoint center = (lat != null && lon != null)
-                ? new GeoPoint(lat, lon, "GPS")
+        Double resolvedLon = (lon != null) ? lon : lng;
+        GeoPoint center = (lat != null && resolvedLon != null)
+                ? new GeoPoint(lat, resolvedLon, "GPS")
                 : geoIpService.approximateFromRequest(request);
 
         return ResponseEntity.ok(trendingService.findLocalTrending(center, radiusKm));

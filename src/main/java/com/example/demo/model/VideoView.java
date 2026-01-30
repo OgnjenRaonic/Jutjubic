@@ -9,8 +9,8 @@ import java.time.Instant;
         indexes = {
                 @Index(name = "idx_views_time", columnList = "viewed_at"),
                 @Index(name = "idx_views_cell_time", columnList = "cell_lat,cell_lon,viewed_at"),
-                @Index(name = "idx_views_video_time", columnList = "video_id,viewed_at")
-                @Index(name="idx_views_geohash_time", columnList="geohash,viewed_at")
+                @Index(name = "idx_views_video_time", columnList = "video_id,viewed_at"),
+                @Index(name = "idx_views_geohash_time", columnList = "geohash,viewed_at")
         }
 )
 public class VideoView {
@@ -52,14 +52,14 @@ public class VideoView {
 
     public VideoView() {}
 
-    public VideoView(Video video, double lat, double lon, String source, int cellLat, int cellLon) {
+    public VideoView(Video video, double lat, double lon, String source, int cellLat, int cellLon, String geohash) {
         this.video = video;
         this.viewerLat = lat;
         this.viewerLon = lon;
         this.source = source;
         this.cellLat = cellLat;
         this.cellLon = cellLon;
+        this.geohash = geohash;
     }
 
-    // getteri/setteri (generiši u IDE)
 }

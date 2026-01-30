@@ -138,21 +138,21 @@ public class VideoServiceImpl implements VideoService {
 
     /**
      * Računa trending score videa na osnovu:
-     * - Broj pregleda (30%)
-     * - Recency (starost videa) (30%)
+     * - Broj pregleda (60%)
      * - Komentari (20%)
-     * - Tag popularnost (20%)
+     * - Recency (starost videa) (10%)
+     * - Tag popularnost (10%)
      */
     private double calculateTrendingScore(Video video) {
         long now = System.currentTimeMillis();
         long videoAgeMs = now - video.getCreatedAt().toEpochMilli();
         double ageInDays = videoAgeMs / (1000.0 * 60 * 60 * 24);
         
-        // 1. Pregledi (30%) - logaritamska normalizacija
+        // 1. Pregledi (60%) - logaritamska normalizacija
         double viewScore = Math.log1p(video.getViewCount()) / Math.log1p(100);
         viewScore = Math.min(1.0, viewScore);
         
-        // 2. Recency (30%) - logaritamski decay
+        // 2. Recency (10%) - logaritamski decay
         // Novi video (age=0) = 1.0, star 30 dana ≈ 0.5
         double recencyScore = 1.0 / (1.0 + Math.log1p(ageInDays));
         recencyScore = Math.min(1.0, recencyScore);
@@ -161,21 +161,21 @@ public class VideoServiceImpl implements VideoService {
         double commentScore = Math.log1p(video.getCommentCount()) / Math.log1p(50);
         commentScore = Math.min(1.0, commentScore);
         
-        // 4. Tag popularnost (20%)
+        // 4. Tag popularnost (10%)
         double tagScore = calculateTagPopularityScore(video);
         
         // Finalna kombinacija
         double finalScore = 
-            (viewScore * 30) +
-            (recencyScore * 30) +
+            (viewScore * 60) +
             (commentScore * 20) +
-            (tagScore * 20);
+            (recencyScore * 10) +
+            (tagScore * 10);
         
         System.out.println("[TRENDING] Video #" + video.getId() 
-            + ": views=" + String.format("%.2f", viewScore * 30)
-            + ", recency=" + String.format("%.2f", recencyScore * 30)
+            + ": views=" + String.format("%.2f", viewScore * 60)
             + ", comments=" + String.format("%.2f", commentScore * 20)
-            + ", tags=" + String.format("%.2f", tagScore * 20)
+            + ", recency=" + String.format("%.2f", recencyScore * 10)
+            + ", tags=" + String.format("%.2f", tagScore * 10)
             + " => TOTAL=" + String.format("%.2f", finalScore));
         
         return finalScore;

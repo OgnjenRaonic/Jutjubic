@@ -157,8 +157,8 @@ public class ScheduledStreamingService {
             long fileSizeBytes = videoFile.length();
             long fileSizeMB = fileSizeBytes / (1024 * 1024);
             
-            double bitrateMBps = video.getQuality() != null ? 
-                video.getQuality().getBitrateMBps() : 1.2; // Default MEDIUM
+            double bitrateMBps = video.getQuality() != null ?
+                video.getQuality().getMegabytesPerSecond() : 1.2; // Default MEDIUM
             
             long estimatedSeconds = Math.max(10, (long)(fileSizeBytes / (bitrateMBps * 1024 * 1024)));
             

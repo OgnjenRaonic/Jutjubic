@@ -12,7 +12,6 @@ public enum VideoQuality {
 
     private final String displayName;
     private final double megabytesPerSecond;
-    private final double bitrateMBps;
 
     VideoQuality(String displayName, double megabytesPerSecond) {
         this.displayName = displayName;
@@ -34,15 +33,5 @@ public enum VideoQuality {
     public long estimateDurationSeconds(long fileSizeBytes) {
         double fileSizeMB = fileSizeBytes / (1024.0 * 1024.0);
         return Math.round(fileSizeMB / this.megabytesPerSecond);
-
-    
-
-    VideoQuality(double bitrateMBps) {
-        this.bitrateMBps = bitrateMBps;
-    }
-
-    public double getBitrateMBps() {
-        return bitrateMBps;
-
     }
 }
