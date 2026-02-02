@@ -68,11 +68,14 @@ public final class GeohashUtil {
         while (lon > 180) lon -= 360;
         return lon;
     }
+
     public static int precisionForRadiusKm(double radiusKm) {
-        if (radiusKm >= 20) return 4;  // grubo (veće ćelije)
-        if (radiusKm >= 5)  return 5;  // ~par km ćelije
-        if (radiusKm >= 1)  return 6;  // ~oko 1 km ćelije
-        return 7;                      // vrlo precizno (stotine metara)
+        if (radiusKm <= 1) return 7;      // ~0.6 km
+        if (radiusKm <= 5) return 6;      // ~2.4 km
+        if (radiusKm <= 10) return 5;     // ~9.4 km
+        if (radiusKm <= 20) return 4;     // ~39 km
+        if (radiusKm <= 50) return 4;     // ~39 km
+        return 3;                          // ~156 km
     }
 
     public record BBox(double minLat, double maxLat, double minLon, double maxLon) {}
