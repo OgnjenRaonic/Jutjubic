@@ -7,6 +7,10 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,8 +27,11 @@ public class ScheduledStreamingService {
     @Autowired
     private VideoRepository videoRepository;
 
-    @Value("${app.ffmpeg.path:ffprobe}")
+    @Value("${app.ffmpeg.path:}")
     private String ffprobePath;
+
+    @Value("${app.ffmpeg.base-dir:lib/ffmpeg/bin}")
+    private String ffmpegBinDir;
 
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ISO_DATE_TIME;
     private static final long DEFAULT_DURATION_SECONDS = 600;
@@ -120,9 +127,10 @@ public class ScheduledStreamingService {
 
     private long getVideoDurationSeconds(Video video) {
         System.out.println("[DEBUG] ====================================");
+        String resolvedFfprobe = resolveFfprobePath();
         System.out.println("[DEBUG] Video ID: " + (video != null ? video.getId() : "null"));
         System.out.println("[DEBUG] Video path: " + (video != null ? video.getVideoPath() : "null"));
-        System.out.println("[DEBUG] FFprobe path: " + ffprobePath);
+        System.out.println("[DEBUG] FFprobe path: " + resolvedFfprobe);
 
         if (video == null || video.getVideoPath() == null || video.getVideoPath().isEmpty()) {
             System.out.println("[DEBUG] Video ili path je null!");
@@ -139,10 +147,10 @@ public class ScheduledStreamingService {
                 return DEFAULT_DURATION_SECONDS;
             }
 
-            System.out.println("[DEBUG] Pokrećem: " + ffprobePath);
+            System.out.println("[DEBUG] Pokrećem: " + resolvedFfprobe);
 
             ProcessBuilder pb = new ProcessBuilder(
-                    ffprobePath,
+                    resolvedFfprobe,
                     "-v", "error",
                     "-show_entries", "format=duration",
                     "-of", "default=noprint_wrappers=1:nokey=1",
@@ -194,6 +202,26 @@ public class ScheduledStreamingService {
         } finally {
             System.out.println("[DEBUG] ====================================");
         }
+    }
+
+    private String resolveFfprobePath() {
+        if (ffprobePath != null) {
+            String configured = ffprobePath.trim();
+            if (!configured.isEmpty() && !"auto".equalsIgnoreCase(configured)) {
+                return configured;
+            }
+        }
+
+        String os = System.getProperty("os.name", "generic").toLowerCase(Locale.ROOT);
+        boolean isWindows = os.contains("win");
+        String binName = isWindows ? "ffprobe.exe" : "ffprobe";
+
+        Path candidate = Paths.get(ffmpegBinDir, binName);
+        if (Files.exists(candidate)) {
+            return candidate.toString();
+        }
+
+        return "ffprobe";
     }
 
     private String formatDuration(Duration duration) {
