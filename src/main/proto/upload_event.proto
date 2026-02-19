@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package mq;
+
+option java_package = "com.example.demo.proto";
+option java_multiple_files = true;
+option java_outer_classname = "UploadEventProto";
+
+message UploadEventMessage {
+  string id = 1;
+  string title = 2;
+  int64 size_bytes = 3;
+  string author_id = 4;
+  string author_name = 5;
+  int64 upload_timestamp_epoch_ms = 6;
+  int32 duration_seconds = 7;
+  repeated string tags = 8;
+  string visibility = 9;
+}
