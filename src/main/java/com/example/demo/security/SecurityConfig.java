@@ -90,6 +90,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/videos/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/comments/video/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/comments/rate-limit-info").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/popular/**").permitAll()
                         .anyRequest().authenticated()
                 )
 
