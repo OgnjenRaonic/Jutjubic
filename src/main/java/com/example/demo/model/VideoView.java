@@ -61,5 +61,39 @@ public class VideoView {
         this.cellLon = cellLon;
         this.geohash = geohash;
     }
+    public Instant getViewedAt() {
+        return viewedAt;
+    }
 
+    public Video getVideo() {
+        return video;
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getGeohash() {
+        return geohash;
+    }
+
+    public Double getViewerLat() {
+        return viewerLat;
+    }
+
+    public Double getViewerLon() {
+        return viewerLon;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public Integer getCellLat() {
+        return cellLat;
+    }
+
+    public Integer getCellLon() {
+        return cellLon;
+    }
 }

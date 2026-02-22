@@ -1,5 +1,7 @@
 package com.example.demo.controller;
 
+import com.example.demo.service.MetricsService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -26,12 +28,16 @@ import com.example.demo.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
+import com.example.demo.service.MetricsService;
+
 @RestController
 @RequestMapping("/api")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
     private final UserService userService;
+    @Autowired
+    private MetricsService metricsService;
     private final SecurityContextRepository securityContextRepository =
             new HttpSessionSecurityContextRepository();
 
@@ -55,7 +61,7 @@ public class AuthController {
 
             request.getSession(true);
             securityContextRepository.saveContext(context, request, response);
-
+            metricsService.userLoggedIn(dto.getEmail());
             return ResponseEntity.ok(new LoginResponse(auth.getName(), "Login successful"));
         } catch (DisabledException e) {
             return ResponseEntity.status(403).body(new LoginResponse(null, "Account not activated. Check your email for activation link."));

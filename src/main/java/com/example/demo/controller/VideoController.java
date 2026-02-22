@@ -32,6 +32,11 @@ import com.example.demo.dtos.UpdateVideoDTO;
 import com.example.demo.dtos.VideoDTO;
 import com.example.demo.service.ScheduledStreamingService;
 import com.example.demo.service.VideoService;
+import com.example.demo.service.MetricsService;
+import io.micrometer.core.annotation.Timed;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import jakarta.annotation.PostConstruct;
 
 @RestController
 @RequestMapping("/api/videos")
@@ -43,12 +48,23 @@ public class VideoController {
     private final ScheduledStreamingService scheduledStreamingService;
     private final ViewService viewService;
 
-    public VideoController(VideoService videoService, ViewService viewService, ScheduledStreamingService scheduledStreamingService) {
+    private final MetricsService metricsService;
+    private Counter videoStreamCounter;
+
+    public VideoController(VideoService videoService, ViewService viewService, ScheduledStreamingService scheduledStreamingService, MetricsService metricsService, MeterRegistry meterRegistry) {
         this.videoService = videoService;
         this.scheduledStreamingService = scheduledStreamingService;
         this.viewService = viewService;
-    }
 
+        this.metricsService = metricsService;
+        this.videoStreamCounter = Counter.builder("jutjubic.video.stream.requests")
+                .description("Broj zahteva za stream videa")
+                .register(meterRegistry);
+    }
+    @PostConstruct
+    public void init() {
+        metricsService.getUniqueUsersCount(); // Inicijalizuj gauge
+    }
     @PostMapping("/{id}/view")
     public ResponseEntity<?> registerView(
             @PathVariable Long id,
@@ -59,6 +75,7 @@ public class VideoController {
     ) {
         Double resolvedLon = (lon != null) ? lon : lng;
         viewService.registerView(id, lat, resolvedLon, request);
+        metricsService.incrementVideoView();
         return ResponseEntity.ok().build();
     }
 
@@ -101,10 +118,15 @@ public class VideoController {
     }
 
     @GetMapping("/{id}/stream")
+    @Timed(value = "jutjubic.video.stream.timer", description = "Vreme obrade stream zahteva")
     public ResponseEntity<ResourceRegion> stream(
             @PathVariable Long id,
             @RequestHeader HttpHeaders headers
     ) throws IOException {
+        videoStreamCounter.increment();
+        metricsService.incrementApiRequest();
+
+        long startTime = System.currentTimeMillis();
 
         Resource video = videoService.getVideoResource(id);
         long contentLength = video.contentLength();

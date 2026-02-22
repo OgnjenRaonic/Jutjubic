@@ -78,6 +78,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/error").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()  // Dozvoli pristup metrikama
+                        .requestMatchers("/actuator/prometheus").permitAll()
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/actuator/health/**").permitAll()
                         .requestMatchers("/activate", "/api/activate").permitAll()
@@ -90,6 +92,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/videos/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/comments/video/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/comments/rate-limit-info").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/popular/**").permitAll()
                         .anyRequest().authenticated()
                 )
 
