@@ -80,6 +80,8 @@ public class SecurityConfig {
                         .requestMatchers("/error").permitAll()
                         .requestMatchers("/actuator/**").permitAll()  // Dozvoli pristup metrikama
                         .requestMatchers("/actuator/prometheus").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers("/actuator/health/**").permitAll()
                         .requestMatchers("/activate", "/api/activate").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/register", "/api/login").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/videos/**").permitAll()

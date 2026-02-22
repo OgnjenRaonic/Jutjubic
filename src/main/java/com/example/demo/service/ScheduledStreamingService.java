@@ -89,12 +89,6 @@ public class ScheduledStreamingService {
         LocalDateTime scheduledAt = video.getScheduledAt();
         LocalDateTime now = LocalDateTime.now(ZoneId.of("Europe/Paris"));
 
-        System.out.println("[STREAM INFO] Video #" + videoId);
-        System.out.println("[STREAM INFO] Sada: " + now);
-        System.out.println("[STREAM INFO] Zakazano: " + scheduledAt);
-        System.out.println("[STREAM INFO] Trajanje: " + duration + "s");
-        System.out.println("[STREAM INFO] Offset: " + offset + "s");
-        System.out.println("[STREAM INFO] Dostupan: " + isAvailable);
 
         String streamStatus;
         String message;
@@ -111,7 +105,6 @@ public class ScheduledStreamingService {
             message = "Streaming je u toku";
         }
 
-        System.out.println("[STREAM INFO] Status: " + streamStatus);
 
         return new ScheduledStreamResponse(
                 videoId,
@@ -126,28 +119,17 @@ public class ScheduledStreamingService {
     }
 
     private long getVideoDurationSeconds(Video video) {
-        System.out.println("[DEBUG] ====================================");
         String resolvedFfprobe = resolveFfprobePath();
-        System.out.println("[DEBUG] Video ID: " + (video != null ? video.getId() : "null"));
-        System.out.println("[DEBUG] Video path: " + (video != null ? video.getVideoPath() : "null"));
-        System.out.println("[DEBUG] FFprobe path: " + resolvedFfprobe);
 
         if (video == null || video.getVideoPath() == null || video.getVideoPath().isEmpty()) {
-            System.out.println("[DEBUG] Video ili path je null!");
             return DEFAULT_DURATION_SECONDS;
         }
 
         try {
             File videoFile = new File(video.getVideoPath());
-            System.out.println("[DEBUG] Apsolutna putanja: " + videoFile.getAbsolutePath());
-            System.out.println("[DEBUG] Fajl postoji? " + videoFile.exists());
-
             if (!videoFile.exists()) {
-                System.out.println("[DEBUG] FAJL NE POSTOJI!");
                 return DEFAULT_DURATION_SECONDS;
             }
-
-            System.out.println("[DEBUG] Pokrećem: " + resolvedFfprobe);
 
             ProcessBuilder pb = new ProcessBuilder(
                     resolvedFfprobe,
@@ -169,9 +151,6 @@ public class ScheduledStreamingService {
 
             boolean finished = process.waitFor(10, java.util.concurrent.TimeUnit.SECONDS);
 
-            System.out.println("[DEBUG] Završio? " + finished);
-            System.out.println("[DEBUG] Output: '" + output.toString().trim() + "'");
-            System.out.println("[DEBUG] Exit code: " + process.exitValue());
 
             if (!finished) {
                 process.destroyForcibly();
@@ -184,23 +163,16 @@ public class ScheduledStreamingService {
                     double durationSeconds = Double.parseDouble(result);
                     if (durationSeconds > 0) {
                         long seconds = Math.round(durationSeconds);
-                        System.out.println("[DEBUG] USPEH: " + seconds + " sekundi");
                         return Math.max(10L, Math.min(seconds, 14400L));
                     }
                 } catch (NumberFormatException e) {
-                    System.out.println("[DEBUG] Greška parsiranja: " + e.getMessage());
                 }
             }
-
-            System.out.println("[DEBUG] Neuspeh, koristim default");
             return DEFAULT_DURATION_SECONDS;
 
         } catch (Exception e) {
-            System.err.println("[DEBUG] IZUZETAK: " + e.getMessage());
             e.printStackTrace();
             return DEFAULT_DURATION_SECONDS;
-        } finally {
-            System.out.println("[DEBUG] ====================================");
         }
     }
 
